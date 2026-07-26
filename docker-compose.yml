@@ -1,0 +1,127 @@
+services:
+  # ============== MySQL 数据库 ==============
+  mysql:
+    image: mysql:8.0
+    container_name: school-ai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      MYSQL_DATABASE: school_ai
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - school-net
+
+  # ============== Dify 知识库 + LLM 编排 ==============
+  # 部署方式请参考：https://docs.dify.ai/getting-started/install-self-hosted/docker-compose
+  # 这里只暴露 Dify 内部的 API 与 Web 端口供后端访问
+  dify-api:
+    profiles: ["local-dify"]
+    image: langgenius/dify-api:1.0.0
+    container_name: school-ai-dify-api
+    restart: unless-stopped
+    environment:
+      DB_DATABASE: dify
+      DB_USERNAME: postgres
+      DB_HOST: db_postgres
+      DB_PORT: 5432
+      DB_PASSWORD: ${DIFY_DB_PASSWORD:?DIFY_DB_PASSWORD must be set}
+      REDIS_HOST: docker-redis-1
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${DIFY_REDIS_PASSWORD:?DIFY_REDIS_PASSWORD must be set}
+      SECRET_KEY: ${DIFY_SECRET_KEY:?DIFY_SECRET_KEY must be set}
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: storage
+      CONSOLE_API_URL: ''
+      CONSOLE_WEB_URL: ''
+      SERVICE_API_URL: http://dify-api:5001
+      APP_API_URL: http://dify-api:5001
+      INIT_PASSWORD: ${DIFY_INIT_PASSWORD:-dify123456}
+    ports:
+      - "5001:5001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - school-net
+      - docker_default
+
+  dify-web:
+    profiles: ["local-dify"]
+    image: langgenius/dify-web:1.0.0
+    container_name: school-ai-dify-web
+    restart: unless-stopped
+    environment:
+      CONSOLE_API_URL: ''
+      NEXT_PUBLIC_API_PREFIX: http://localhost/v1
+      NEXT_PUBLIC_PUBLIC_API_PREFIX: http://localhost/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - dify-api
+    networks:
+      - school-net
+
+  # ============== Dify 依赖的 Redis ==============
+  redis:
+    image: redis:7-alpine
+    container_name: school-ai-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - school-net
+
+  # ============== SpringBoot 后端 ==============
+  backend:
+    build: ./backend
+    container_name: school-ai-backend
+    restart: unless-stopped
+    environment:
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      DIFY_API_BASE: ${DIFY_API_BASE:-http://docker-api-1:5001/v1}
+      DIFY_API_KEY: ${DIFY_API_KEY:?DIFY_API_KEY must be set}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - school-net
+      - docker_default
+
+  # ============== Vue 前端 (Nginx) ==============
+  frontend:
+    build: ./frontend
+    container_name: school-ai-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - school-net
+      - docker_default
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  school-net:
+    driver: bridge
+  docker_default:
+    external: true

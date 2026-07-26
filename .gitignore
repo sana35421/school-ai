@@ -1,0 +1,40 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.cookies
+*_token.txt
+
+# Dify exports, graphs, backups and local admin scripts
+dify-backup-*/
+*dify*.dump
+*workflow*graph*.json
+*workflow*graph*.txt
+clean_dify_workflows.py
+enable_dify_retrieval.py
+fix_dify_retrieval.py
+inspect_dify_binding.py
+update_dify_*.py
+published_graph.json
+current_workflow_graph.txt
+
+# Build output and dependencies
+frontend/node_modules/
+frontend/dist/
+backend/target/
+*.class
+backend/GenHash.java
+backend/bcrypt.jsh
+backend/cp.txt
+
+# Logs and local files
+*.log
+login-*.json
+chat_*.json
+query
+.DS_Store
+.idea/
+.vscode/
+.trae/

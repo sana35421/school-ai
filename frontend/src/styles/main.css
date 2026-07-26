@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #FAF7F2;
+    color: #1A1F36;
+    background-image:
+      radial-gradient(at 12% 8%, rgba(184, 92, 56, 0.04) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(107, 127, 107, 0.04) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Fraunces', Georgia, 'PingFang SC', serif;
+    font-feature-settings: 'ss01', 'ss02';
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: rgba(184, 92, 56, 0.18);
+    color: #1A1F36;
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(26, 31, 54, 0.12);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(26, 31, 54, 0.22);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-5 py-2.5 rounded-md
+           bg-terracotta text-white font-medium text-sm
+           transition-all duration-200
+           hover:bg-terracotta-600 active:bg-terracotta-700
+           focus:outline-none focus:ring-2 focus:ring-terracotta-200 focus:ring-offset-1
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-md
+           bg-transparent text-ink-soft font-medium text-sm
+           border border-border
+           transition-all duration-200
+           hover:bg-paper hover:border-border-strong hover:text-ink
+           focus:outline-none focus:ring-2 focus:ring-sage-100;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-md bg-white
+           border border-border text-ink placeholder:text-ink-mute
+           transition-all duration-200
+           focus:outline-none focus:border-terracotta-300 focus:ring-2 focus:ring-terracotta-100;
+  }
+
+  .card {
+    @apply bg-white border border-border rounded-md shadow-soft;
+  }
+
+  .card-lift {
+    @apply bg-white border border-border rounded-md shadow-card
+           transition-shadow duration-300 hover:shadow-lift;
+  }
+
+  .display-text {
+    font-family: 'Fraunces', Georgia, serif;
+    font-feature-settings: 'ss01';
+    letter-spacing: -0.02em;
+  }
+
+  .divider-fade {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #E8E2D8 30%, #E8E2D8 70%, transparent);
+  }
+
+  /* AI 消息气泡内的 Markdown 排版 */
+  .markdown-body p { margin: 0.5em 0; }
+  .markdown-body p:first-child { margin-top: 0; }
+  .markdown-body p:last-child { margin-bottom: 0; }
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    margin: 1em 0 0.4em;
+    color: #1A1F36;
+  }
+  .markdown-body h1 { font-size: 1.25rem; }
+  .markdown-body h2 { font-size: 1.125rem; }
+  .markdown-body h3 { font-size: 1rem; }
+  .markdown-body ul,
+  .markdown-body ol {
+    margin: 0.5em 0;
+    padding-left: 1.4em;
+  }
+  .markdown-body li { margin: 0.2em 0; }
+  .markdown-body code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    background: rgba(26, 31, 54, 0.06);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: #B85C38;
+  }
+  .markdown-body pre {
+    background: #1A1F36;
+    color: #FAF7F2;
+    padding: 0.9em 1.1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.7em 0;
+    font-size: 0.85rem;
+  }
+  .markdown-body pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+  .markdown-body blockquote {
+    border-left: 3px solid #B85C38;
+    padding-left: 1em;
+    color: #6B7388;
+    font-style: italic;
+    margin: 0.6em 0;
+  }
+  .markdown-body a {
+    color: #B85C38;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+  .markdown-body table {
+    border-collapse: collapse;
+    margin: 0.7em 0;
+    font-size: 0.9em;
+  }
+  .markdown-body th,
+  .markdown-body td {
+    border: 1px solid #E8E2D8;
+    padding: 0.4em 0.8em;
+  }
+  .markdown-body th {
+    background: #FAF7F2;
+    font-weight: 600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
