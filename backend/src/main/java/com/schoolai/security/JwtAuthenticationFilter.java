@@ -1,5 +1,6 @@
 package com.schoolai.security;
 
+import com.schoolai.service.LoginSessionService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,6 +23,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final LoginSessionService loginSessionService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -35,6 +37,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long userId = claims.get("userId", Long.class);
                 String studentId = claims.get("studentId", String.class);
                 String role = claims.get("role", String.class);
+                String sessionId = claims.get("sessionId", String.class);
+                if (!loginSessionService.isCurrentSession(userId, sessionId)) {
+                    chain.doFilter(request, response);
+                    return;
+                }
                 if (role == null) {
                     role = "student";
                 }

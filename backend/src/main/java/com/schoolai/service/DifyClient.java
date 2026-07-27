@@ -67,6 +67,7 @@ public class DifyClient {
             }
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(rb.byteStream()))) {
                 String line;
+                StringBuilder answerBuffer = new StringBuilder();
                 while ((line = reader.readLine()) != null) {
                     if (!line.startsWith("data:")) continue;
                     String payload = line.substring(5).trim();
@@ -77,7 +78,12 @@ public class DifyClient {
                         if ("message".equals(event) || "agent_message".equals(event)) {
                             String ans = node.path("answer").asText();
                             if (!ans.isEmpty()) {
-                                onChunk.accept(ans);
+                                answerBuffer.append(ans);
+                                String visible = removeThinking(answerBuffer);
+                                if (!visible.isEmpty()) {
+                                    onChunk.accept(visible);
+                                    answerBuffer.setLength(0);
+                                }
                             }
                         } else if ("message_end".equals(event) || "agent_end".equals(event)) {
                             String cid = node.path("conversation_id").asText();
@@ -91,5 +97,18 @@ public class DifyClient {
                 }
             }
         }
+    }
+
+    private String removeThinking(StringBuilder buffer) {
+        String value = buffer.toString();
+        int start = value.indexOf("<think>");
+        if (start < 0) {
+            return value;
+        }
+        int end = value.indexOf("</think>", start + 7);
+        if (end < 0) {
+            return "";
+        }
+        return value.substring(0, start) + value.substring(end + 8);
     }
 }

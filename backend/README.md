@@ -1,76 +1,95 @@
-# 校园智能问答助手 · 后端服务
+# 后端服务
 
-Spring Boot 3.2 + Java 17 + MyBatis-Plus + MySQL 8.0 + Dify + DeepSeek
+校园智能问答助手后端，基于 Spring Boot 3.2、Java 17、MyBatis-Plus、Spring Security 和 JWT 实现。
 
 ## 技术栈
 
-- SpringBoot 3.2.5
+- Spring Boot 3.2.5
 - Java 17
+- Maven 3.8+
 - MyBatis-Plus 3.5.5
 - Spring Security 6 + JWT
-- OkHttp 4.12 (调用 Dify)
+- OkHttp 4.12
 - MySQL 8.0
+- Dify API
 
-## 本地开发
+## 配置
 
-### 1. 准备环境
+生产环境通过项目根目录 `.env` 注入配置：
 
-- JDK 17+
-- Maven 3.8+
-- MySQL 8.0+（先执行 `db/init.sql` 创建库表）
-- Dify 服务（本地或远程）
+```env
+MYSQL_PASSWORD=数据库密码
+DIFY_API_BASE=https://api.dify.ai/v1
+DIFY_API_KEY=app-Dify应用Key
+JWT_SECRET=至少32位随机字符串
+```
 
-### 2. 配置 application.yml
+`application.yml` 已配置 MySQL、Dify 和 JWT 的环境变量读取，不要把真实密码或 API Key 写入源码。
 
-修改 `src/main/resources/application.yml`：
-- `spring.datasource.password`：你的 MySQL 密码
-- `dify.api-base`：Dify 服务地址（默认 `http://localhost/v1`）
-- `dify.api-key`：Dify 应用的 API Key
-- `jwt.secret`：JWT 签名密钥（生产环境务必修改）
+本地直接运行后端前，需要准备 MySQL 8.0，并执行 `db/init.sql` 初始化数据库；使用 Docker Compose 时，MySQL 会由 Compose 管理。
 
-### 3. 启动
+## 启动方式
 
-```bash
-# 在 backend/ 目录下
+### Docker Compose
+
+在项目根目录执行：
+
+```powershell
+docker compose up -d --build mysql redis backend
+docker compose ps
+```
+
+### Maven
+
+```powershell
+cd backend
 mvn spring-boot:run
 ```
 
-或者打包后运行：
+### 打包运行
 
-```bash
+```powershell
+cd backend
 mvn clean package -DskipTests
 java -jar target/school-ai-backend.jar
 ```
 
-服务启动在 `http://localhost:8080`
-
-### 4. 健康检查
-
-```bash
-curl http://localhost:8080/api/health
-```
+后端默认监听 `http://localhost:8080`。
 
 ## API 一览
 
 | 路径 | 方法 | 鉴权 | 说明 |
-|------|------|------|------|
+| --- | --- | --- | --- |
 | `/api/auth/login` | POST | 无 | 登录 |
 | `/api/auth/me` | GET | 是 | 获取当前用户 |
-| `/api/chat/send` | POST | 是 | 流式发送消息 (SSE) |
-| `/api/chat/history` | GET | 是 | 一周内历史对话 |
-| `/api/chat/messages/{id}` | GET | 是 | 对话详情 |
+| `/api/health` | GET | 无 | 服务健康检查 |
+| `/api/chat/send` | POST | 是 | 发送问题，SSE 流式响应 |
+| `/api/chat/history` | GET | 是 | 获取历史对话 |
+| `/api/chat/messages/{id}` | GET | 是 | 获取对话消息 |
 | `/api/chat/{id}` | DELETE | 是 | 删除对话 |
-| `/api/admin/class/students` | GET | 导员/管理员 | 本班学生 |
-| `/api/admin/class/conversations` | GET | 导员/管理员 | 本班对话 |
-| `/api/admin/class/messages/{id}` | GET | 导员/管理员 | 班级对话详情 |
+| `/api/admin/class/students` | GET | 导员/管理员 | 获取班级学生 |
+| `/api/admin/class/conversations` | GET | 导员/管理员 | 查看班级对话 |
+| `/api/admin/class/messages/{id}` | GET | 导员/管理员 | 查看对话详情 |
+
+## 接口测试
+
+```powershell
+curl.exe http://localhost:8080/api/health
+
+curl.exe -X POST http://localhost:8080/api/auth/login `
+  -H "Content-Type: application/json" `
+  -d '{"studentId":"20220101","password":"123456"}'
+```
 
 ## 测试账号
 
-执行 `db/init.sql` 后自动生成：
+以下账号由 `db/init.sql` 提供，仅用于开发和演示：
 
-| 学号 | 密码 | 角色 |
-|------|------|------|
-| admin001 | 123456 | 超级管理员 |
-| admin002 | 123456 | 管理员 |
-| T001 | 123456 | 导员（计科2201班）|
-| 20220101 | 123456 | 学生（计科2201班）|
+| 账号 | 密码 | 角色 |
+| --- | --- | --- |
+| `admin001` | `123456` | 超级管理员 |
+| `admin002` | `123456` | 管理员 |
+| `T001` | `123456` | 导员 |
+| `20220101` | `123456` | 学生 |
+
+正式部署前必须修改默认密码。

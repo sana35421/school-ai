@@ -71,7 +71,7 @@ public class ChatServiceImpl implements IChatService {
             writer.write("event: start\ndata: connected\n\n");
             writer.flush();
 
-            difyClient.chatStream(dto.getQuery(), user.getStudentId(), difyConvId, convIdBuf, chunk -> {
+            difyClient.chatStream(normalizeCompetitionQuery(dto.getQuery()), user.getStudentId(), difyConvId, convIdBuf, chunk -> {
                 fullAnswer.append(chunk);
                 String safeChunk = chunk.replace("\n", "\\n").replace("\r", "");
                 try {
@@ -131,6 +131,20 @@ public class ChatServiceImpl implements IChatService {
         } finally {
             writer.close();
         }
+    }
+
+    private String normalizeCompetitionQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return query;
+        }
+        String normalized = query;
+        if (normalized.matches(".*(?i)(ACM|ICPC|CCPC|算法比赛|程序设计竞赛|算法竞赛).*")) {
+            normalized += "。请按知识库中的“算法与程序设计竞赛”分类回答，优先查找该分类的指导老师信息；如果用户要求推荐队友，再返回该分类的具体队友。";
+        }
+        if (normalized.matches(".*(?i)(挑战杯).*")) {
+            normalized += "。请按知识库中的“软件开发与创新项目竞赛”或挑战杯相关分类回答，优先查找指导老师信息。";
+        }
+        return normalized;
     }
 
     private String escapeJson(String s) {

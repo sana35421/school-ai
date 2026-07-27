@@ -36,11 +36,12 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(bytes);
     }
 
-    public String generate(Long userId, String studentId, String role) {
+    public String generate(Long userId, String studentId, String role, String sessionId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("studentId", studentId);
         claims.put("role", role);
+        claims.put("sessionId", sessionId);
 
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expire);

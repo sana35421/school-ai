@@ -90,6 +90,9 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      REDIS_HOST: school-ai-redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       DIFY_API_BASE: ${DIFY_API_BASE:-http://docker-api-1:5001/v1}
       DIFY_API_KEY: ${DIFY_API_KEY:?DIFY_API_KEY must be set}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}

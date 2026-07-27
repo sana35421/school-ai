@@ -1,60 +1,69 @@
-# 校园智能问答助手 · 前端
+# 前端服务
 
-Vue 3 + TypeScript + Vite + TailwindCSS + Element Plus 实现。
+校园智能问答助手前端，基于 Vue 3、TypeScript、Vite、Pinia、Element Plus 和 TailwindCSS 实现。
 
-## 设计美学
+## 功能页面
 
-**Modern Academic Editorial** — 学院派编辑设计
-- 主色：`#FAF7F2`（温润纸张白）
-- 强调色：`#B85C38`（赤陶橙）
-- AI 气泡：`#6B7F6B`（灰苔绿）
-- 字体：Fraunces（显示） / IBM Plex Sans（正文） / JetBrains Mono（代码）
+| 路径 | 页面 | 权限 |
+| --- | --- | --- |
+| `/login` | 登录页 | 公开 |
+| `/chat` | 聊天主页 | 登录用户 |
+| `/chat/:id` | 历史对话 | 登录用户 |
+| `/admin` | 班级对话管理 | 导员/管理员 |
+| `/admin/knowledge` | 知识库管理 | 管理员 |
 
 ## 本地开发
 
-```bash
-# 1. 安装依赖（需要 Node 18+）
+需要 Node.js 18+：
+
+```powershell
+cd frontend
 npm install
-
-# 2. 启动开发服务器
 npm run dev
-
-# 浏览器访问 http://localhost:5173
 ```
 
-后端默认在 `http://localhost:8080`，通过 Vite 代理转发。
+开发地址为 `http://localhost:5173`。Vite 将 API 请求代理到本地后端。
 
-## 构建生产版本
+## 生产构建
 
-```bash
+```powershell
+cd frontend
 npm run build
-# 产物在 dist/ 目录
 ```
+
+构建前会执行 TypeScript 检查，成功后生成 `dist/`。Docker 生产镜像会把 `dist/` 复制到 Nginx，并使用 `nginx.conf` 代理后端接口。
+
+```powershell
+docker compose up -d --build frontend
+```
+
+生产访问地址为 `http://localhost`，Nginx 负责：
+
+- 返回 Vue 单页应用静态文件。
+- 将 `/api/` 转发至 `backend:8080`。
+- 为 SSE 聊天关闭代理缓存并延长读取超时。
+- 添加 UTF-8 响应配置。
+
+不要在 `nginx.conf` 中写入本地电脑专用的 Dify 容器名。Dify API 由后端根据 `DIFY_API_BASE` 调用。
 
 ## 目录结构
 
-```
+```text
 src/
-├── api/           # API 封装
-├── components/    # 通用组件
-├── router/        # 路由
-├── stores/        # Pinia 状态
+├── api/           # 登录、聊天、管理和上传接口
+├── components/    # 通用 Vue 组件
+├── router/        # 路由和权限跳转
+├── stores/        # 用户和聊天状态
 ├── styles/        # 全局样式
-├── views/         # 页面
+├── views/         # 登录、聊天、管理页面
 ├── App.vue
 └── main.ts
 ```
 
-## 路由说明
+## 常用命令
 
-| 路径 | 页面 | 权限 |
-|------|------|------|
-| `/login` | 登录 | 公开 |
-| `/chat` | 聊天主页 | 登录用户 |
-| `/chat/:id` | 继续对话 | 登录用户 |
-| `/admin` | 班级对话审计 | 导员/管理员 |
-| `/admin/knowledge` | 知识库管理 | 管理员 |
-
-## 接入后端
-
-修改 `.env.development` 中的 `VITE_API_BASE` 即可。默认 `http://localhost:8080/api`。
+```powershell
+npm run dev
+npm run build
+npm run preview
+```
