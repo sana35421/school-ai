@@ -8,25 +8,15 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("upload_records")
-public class UploadRecord {
+@TableName("message_attachments")
+public class MessageAttachment {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long userId;
+    private Long messageId;
 
-    private String fileName;
-
-    private String fileType;
-
-    private Long fileSize;
-
-    private String difyFileId;
-
-    private String status;
-
-    private String errorMessage;
+    private Long uploadRecordId;
 
     private LocalDateTime createdAt;
 }

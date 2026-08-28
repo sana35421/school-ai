@@ -24,6 +24,11 @@ public class AuthController extends BaseController {
         return success(loginVO);
     }
 
+    @PostMapping("/yiban/login")
+    public Result<LoginVO> yibanLogin() {
+        return success(authService.loginWithYibanTestUser());
+    }
+
     @GetMapping("/me")
     public Result<UserVO> me(HttpServletRequest request) {
         UserVO userVO = authService.getCurrentUser(request);

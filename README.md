@@ -200,6 +200,7 @@ school-ai/
 ├── .env.example                     # 环境变量模板，不含真实密钥
 ├── computer_competition_*.md        # 比赛系统提示词和知识库资料
 ├── competitions_kb.txt              # 比赛知识库资料
+├── scholarship_and_grad_school_kb.md # 奖学金、考研与保研知识库资料
 └── docs/                            # 部署和上线文档
 ```
 

@@ -1,6 +1,7 @@
 package com.schoolai.service.impl;
 
 import com.schoolai.common.exception.ServiceException;
+import com.schoolai.config.YibanLoginConfig;
 import com.schoolai.entity.User;
 import com.schoolai.enums.UserRole;
 import com.schoolai.mapper.UserMapper;
@@ -12,14 +13,12 @@ import com.schoolai.service.IAuthService;
 import com.schoolai.service.LoginSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements IAuthService {
@@ -28,6 +27,7 @@ public class AuthServiceImpl implements IAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final LoginSessionService loginSessionService;
+    private final YibanLoginConfig yibanLoginConfig;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -38,16 +38,17 @@ public class AuthServiceImpl implements IAuthService {
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new ServiceException(401, "学号或密码错误");
         }
-        String sessionId = UUID.randomUUID().toString();
-        loginSessionService.replaceSession(user.getId(), sessionId, Duration.ofDays(7));
-        String token = jwtUtil.generate(user.getId(), user.getStudentId(), user.getRole(), sessionId);
+        return createLoginResult(user);
+    }
 
-        UserVO userVO = convertToUserVO(user);
-
-        LoginVO loginVO = new LoginVO();
-        loginVO.setToken(token);
-        loginVO.setUser(userVO);
-        return loginVO;
+    @Override
+    public LoginVO loginWithYibanTestUser() {
+        ensureYibanLoginEnabled();
+        User user = userMapper.findByStudentId(yibanLoginConfig.getTestStudentId());
+        if (user == null || !UserRole.STUDENT.getCode().equalsIgnoreCase(user.getRole())) {
+            throw new ServiceException(500, "易班测试学生账户未正确配置");
+        }
+        return createLoginResult(user);
     }
 
     @Override
@@ -61,6 +62,22 @@ public class AuthServiceImpl implements IAuthService {
             throw new ServiceException(401, "用户不存在");
         }
         return convertToUserVO(user);
+    }
+
+    private LoginVO createLoginResult(User user) {
+        String sessionId = UUID.randomUUID().toString();
+        loginSessionService.replaceSession(user.getId(), sessionId, Duration.ofDays(7));
+        String token = jwtUtil.generate(user.getId(), user.getStudentId(), user.getRole(), sessionId);
+        LoginVO loginVO = new LoginVO();
+        loginVO.setToken(token);
+        loginVO.setUser(convertToUserVO(user));
+        return loginVO;
+    }
+
+    private void ensureYibanLoginEnabled() {
+        if (!yibanLoginConfig.isEnabled()) {
+            throw new ServiceException(503, "易班登录未启用");
+        }
     }
 
     private UserVO convertToUserVO(User user) {

@@ -5,12 +5,17 @@ import com.schoolai.common.exception.ServiceException;
 import com.schoolai.entity.Conversation;
 import com.schoolai.entity.KbDocument;
 import com.schoolai.entity.Message;
+import com.schoolai.entity.MessageAttachment;
+import com.schoolai.entity.UploadRecord;
 import com.schoolai.entity.User;
 import com.schoolai.enums.UserRole;
 import com.schoolai.mapper.ConversationMapper;
 import com.schoolai.mapper.KbDocumentMapper;
+import com.schoolai.mapper.MessageAttachmentMapper;
 import com.schoolai.mapper.MessageMapper;
+import com.schoolai.mapper.UploadRecordMapper;
 import com.schoolai.mapper.UserMapper;
+import com.schoolai.model.vo.AttachmentVO;
 import com.schoolai.model.vo.ConversationVO;
 import com.schoolai.model.vo.KbDocumentVO;
 import com.schoolai.model.vo.MessageVO;
@@ -42,6 +47,8 @@ public class AdminServiceImpl implements IAdminService {
     private final UserMapper userMapper;
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
+    private final MessageAttachmentMapper messageAttachmentMapper;
+    private final UploadRecordMapper uploadRecordMapper;
     private final SecurityUtils securityUtils;
     private final KbDocumentMapper kbDocumentMapper;
 
@@ -134,6 +141,9 @@ public class AdminServiceImpl implements IAdminService {
             vo.setCreatedAt(conv.getCreatedAt());
             vo.setLastActiveAt(conv.getLastActiveAt());
             List<Message> msgs = messageMapper.findByConversationId(conv.getConversationId());
+            if (msgs != null && !msgs.isEmpty()) {
+                vo.setSummary(msgs.get(msgs.size() - 1).getContent());
+            }
             vo.setMessageCount(msgs != null ? msgs.size() : 0);
             return vo;
         }).collect(Collectors.toList());
@@ -291,6 +301,30 @@ public class AdminServiceImpl implements IAdminService {
         vo.setRole(message.getRole());
         vo.setContent(message.getContent());
         vo.setCreatedAt(message.getCreatedAt());
+        List<MessageAttachment> relations = messageAttachmentMapper.selectList(
+                new QueryWrapper<MessageAttachment>().eq("message_id", message.getId()).orderByAsc("id"));
+        if (!relations.isEmpty()) {
+            List<Long> uploadIds = relations.stream().map(MessageAttachment::getUploadRecordId).toList();
+            java.util.Map<Long, UploadRecord> uploads = uploadRecordMapper.selectBatchIds(uploadIds).stream()
+                    .collect(Collectors.toMap(UploadRecord::getId, record -> record));
+            vo.setAttachments(uploadIds.stream()
+                    .map(uploads::get)
+                    .filter(Objects::nonNull)
+                    .map(this::toAttachmentVO)
+                    .toList());
+        } else {
+            vo.setAttachments(List.of());
+        }
+        return vo;
+    }
+
+    private AttachmentVO toAttachmentVO(UploadRecord record) {
+        AttachmentVO vo = new AttachmentVO();
+        vo.setId(record.getId());
+        vo.setFileName(record.getFileName());
+        vo.setFileType(record.getFileType());
+        vo.setFileSize(record.getFileSize());
+        vo.setStatus(record.getStatus());
         return vo;
     }
 }

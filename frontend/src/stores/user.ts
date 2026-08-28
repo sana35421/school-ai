@@ -29,11 +29,21 @@ export const useUserStore = defineStore('user', () => {
 
   async function login(studentId: string, password: string) {
     const result = await authApi.login({ studentId, password })
+    persistLogin(result)
+    return result
+  }
+
+  async function loginWithYibanTestUser() {
+    const result = await authApi.loginWithYibanTestUser()
+    persistLogin(result)
+    return result
+  }
+
+  function persistLogin(result: authApi.LoginResult) {
     token.value = result.token
     user.value = result.user
     localStorage.setItem('token', result.token)
     localStorage.setItem('user', JSON.stringify(result.user))
-    return result
   }
 
   async function fetchProfile() {
@@ -57,5 +67,5 @@ export const useUserStore = defineStore('user', () => {
     useChatStore().reset()
   }
 
-  return { token, user, isLoggedIn, isStaff, isAdmin, login, fetchProfile, logout }
+  return { token, user, isLoggedIn, isStaff, isAdmin, login, loginWithYibanTestUser, fetchProfile, logout }
 })

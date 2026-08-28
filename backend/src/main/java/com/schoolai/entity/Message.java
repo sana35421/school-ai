@@ -22,5 +22,7 @@ public class Message {
 
     private String content;
 
+    private String sourcesJson;
+
     private LocalDateTime createdAt;
 }

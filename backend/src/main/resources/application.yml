@@ -40,9 +40,17 @@ dify:
   api-base: ${DIFY_API_BASE:http://localhost/v1}
   api-key: ${DIFY_API_KEY}
 
+chat:
+  file-upload-enabled: ${CHAT_FILE_UPLOAD_ENABLED:true}
+
 jwt:
   secret: ${JWT_SECRET}
   expire: 604800000  # 7 天
+
+yiban:
+  login:
+    enabled: ${YIBAN_LOGIN_ENABLED:false}
+    test-student-id: ${YIBAN_TEST_STUDENT_ID:yiban_test}
 
 logging:
   level:

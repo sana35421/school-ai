@@ -26,13 +26,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                      @NonNull HttpServletResponse response,
                                      @NonNull FilterChain chain) throws ServletException, IOException {
-        if (!"/api/auth/login".equals(request.getRequestURI())) {
+        String requestUri = request.getRequestURI();
+        boolean loginRequest = "/api/auth/login".equals(requestUri)
+                || "/api/auth/yiban/login".equals(requestUri);
+        boolean uploadRequest = "/api/upload/file".equals(requestUri);
+        if (!loginRequest && !uploadRequest) {
             chain.doFilter(request, response);
             return;
         }
 
         String ip = getClientIp(request);
-        String key = "login:" + ip;
+        String key = (loginRequest ? "login:" : "upload:") + ip;
 
         long now = System.currentTimeMillis();
         RateWindow window = windows.compute(key, (k, v) -> {
@@ -44,7 +48,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         });
 
         if (window.count > MAX_REQUESTS_PER_MINUTE) {
-            log.warn("登录频率超限: ip={}, count={}", ip, window.count);
+            log.warn("请求频率超限: path={}, ip={}, count={}", requestUri, ip, window.count);
             response.setStatus(429);
             response.setContentType("application/json;charset=utf-8");
             response.getWriter().write("{\"code\":429,\"message\":\"请求过于频繁，请稍后再试\"}");

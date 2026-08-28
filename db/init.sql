@@ -8,6 +8,7 @@ USE school_ai;
 
 -- 班级表
 DROP TABLE IF EXISTS kb_documents;
+DROP TABLE IF EXISTS message_attachments;
 DROP TABLE IF EXISTS upload_records;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS conversations;
@@ -52,6 +53,7 @@ CREATE TABLE messages (
     user_id         BIGINT NOT NULL,
     role            VARCHAR(20) NOT NULL COMMENT 'user 或 assistant',
     content         TEXT NOT NULL,
+    sources_json    TEXT NULL COMMENT 'Dify知识库检索来源JSON',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_conv_time (conversation_id, created_at),
     INDEX idx_user (user_id),
@@ -64,10 +66,27 @@ CREATE TABLE upload_records (
     file_name       VARCHAR(255) NOT NULL COMMENT '原始文件名',
     file_type       VARCHAR(100) NOT NULL COMMENT '文件MIME类型',
     file_size       BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+    dify_file_id    VARCHAR(100) NULL COMMENT 'Dify上传文件ID',
+    status          VARCHAR(30) NOT NULL DEFAULT 'uploaded' COMMENT '上传状态',
+    error_message   VARCHAR(500) NULL COMMENT '上传失败原因',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
     INDEX idx_user (user_id),
+    INDEX idx_upload_status (user_id, status),
+    UNIQUE INDEX uk_dify_file_id (dify_file_id),
     CONSTRAINT fk_upload_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT '上传文件记录表（不存储文件内容）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT '上传文件记录表';
+
+CREATE TABLE message_attachments (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    message_id BIGINT NOT NULL,
+    upload_record_id BIGINT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_message_upload (message_id, upload_record_id),
+    INDEX idx_message (message_id),
+    INDEX idx_upload (upload_record_id),
+    CONSTRAINT fk_attachment_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attachment_upload FOREIGN KEY (upload_record_id) REFERENCES upload_records(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息附件关联表';
 
 CREATE TABLE kb_documents (
     id          BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -113,7 +132,8 @@ VALUES
 ('20220101', 'student_li', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '李同学', 1, 'student'),
 ('20220102', 'student_wang', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '王同学', 1, 'student'),
 ('20220103', 'student_zhao', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '赵同学', 1, 'student'),
-('20220201', 'student_qian', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '钱同学', 2, 'student');
+('20220201', 'student_qian', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '钱同学', 2, 'student'),
+('yiban_test', 'yiban_test', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '易班测试用户', 1, 'student');
 
 -- ===========================================================
 -- 测试账号

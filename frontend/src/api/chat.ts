@@ -3,9 +3,24 @@ import request from './request'
 export interface Conversation {
   conversationId: string
   title: string
+  summary?: string
   createdAt: string
   lastActiveAt: string
   messageCount?: number
+}
+
+export interface Attachment {
+  id: number
+  fileName: string
+  fileType: string
+  fileSize: number
+  status: string
+}
+
+export interface SourceItem {
+  documentName: string
+  score: number
+  content: string
 }
 
 export interface Message {
@@ -13,9 +28,11 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   createdAt?: string
+  sources?: SourceItem[]
+  attachments?: Attachment[]
 }
 
-export interface ChatSendPayload {
+interface ChatSendPayload {
   query: string
   conversationId?: string
   attachmentIds?: number[]
@@ -24,11 +41,7 @@ export interface ChatSendPayload {
 export interface ChatSendResult {
   answer: string
   conversationId: string
-  sources?: Array<{
-    documentName: string
-    score: number
-    content: string
-  }>
+  sources?: SourceItem[]
 }
 
 export const getHistory = (days = 7) =>
@@ -40,12 +53,11 @@ export const getMessages = (conversationId: string) =>
 export const deleteConversation = (conversationId: string) =>
   request.delete(`/chat/${conversationId}`)
 
-/**
- * 流式对话（SSE）
- */
 export const sendMessageStream = (
   payload: ChatSendPayload,
+  onAccepted: () => void,
   onChunk: (text: string) => void,
+  onSources: (sources: SourceItem[]) => void,
   onDone: (conversationId: string) => void,
   onError: (err: Error) => void
 ) => {
@@ -63,8 +75,10 @@ export const sendMessageStream = (
   })
     .then(async (response) => {
       if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}`)
+        const errorText = await response.text()
+        throw new Error(errorText || `HTTP ${response.status}`)
       }
+      onAccepted()
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
       let buffer = ''
@@ -79,19 +93,22 @@ export const sendMessageStream = (
 
         for (const line of lines) {
           if (!line.startsWith('data:')) continue
-          const payload = line.slice(5).trim()
-          if (!payload) continue
+          const eventPayload = line.slice(5).trim()
+          if (!eventPayload) continue
+          let evt: any
           try {
-            const evt = JSON.parse(payload)
-            if (evt.type === 'message' && evt.answer) {
-              onChunk(evt.answer)
-            } else if (evt.type === 'done') {
-              conversationId = evt.conversation_id || conversationId
-            } else if (evt.type === 'error') {
-              throw new Error(evt.message || '流式错误')
-            }
-          } catch (e) {
-            // 忽略非 JSON 行
+            evt = JSON.parse(eventPayload)
+          } catch {
+            continue
+          }
+          if (evt.type === 'message' && evt.answer) {
+            onChunk(evt.answer)
+          } else if (evt.type === 'sources' && Array.isArray(evt.sources)) {
+            onSources(evt.sources)
+          } else if (evt.type === 'done') {
+            conversationId = evt.conversation_id || conversationId
+          } else if (evt.type === 'error') {
+            throw new Error(evt.message || '流式错误')
           }
         }
       }

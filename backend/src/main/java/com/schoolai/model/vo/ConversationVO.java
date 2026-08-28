@@ -10,6 +10,7 @@ public class ConversationVO {
     private Long userId;
     private String conversationId;
     private String title;
+    private String summary;
     private LocalDateTime createdAt;
     private LocalDateTime lastActiveAt;
     private int messageCount;

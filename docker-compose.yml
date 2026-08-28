@@ -95,7 +95,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       DIFY_API_BASE: ${DIFY_API_BASE:-http://docker-api-1:5001/v1}
       DIFY_API_KEY: ${DIFY_API_KEY:?DIFY_API_KEY must be set}
+      CHAT_FILE_UPLOAD_ENABLED: ${CHAT_FILE_UPLOAD_ENABLED:-true}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      YIBAN_LOGIN_ENABLED: ${YIBAN_LOGIN_ENABLED:-false}
+      YIBAN_TEST_STUDENT_ID: ${YIBAN_TEST_STUDENT_ID:-yiban_test}
       TZ: Asia/Shanghai
     ports:
       - "8080:8080"

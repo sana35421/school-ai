@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Conversation, Message } from '@/api/chat'
+import type { Attachment, Conversation, Message, SourceItem } from '@/api/chat'
+import type { UploadRecord } from '@/api/upload'
 import * as chatApi from '@/api/chat'
 
 export const useChatStore = defineStore('chat', () => {
@@ -9,6 +10,7 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([])
   const isStreaming = ref(false)
   const streamingText = ref('')
+  const streamingSources = ref<SourceItem[]>([])
 
   async function loadHistory(days = 7) {
     conversations.value = await chatApi.getHistory(days)
@@ -25,15 +27,12 @@ export const useChatStore = defineStore('chat', () => {
     currentConversationId.value = ''
     messages.value = []
     streamingText.value = ''
+    streamingSources.value = []
   }
 
   function reset() {
     conversations.value = []
     clearCurrent()
-  }
-
-  function appendUserMessage(content: string) {
-    messages.value.push({ role: 'user', content })
   }
 
   function startAssistantMessage() {
@@ -47,23 +46,15 @@ export const useChatStore = defineStore('chat', () => {
 
   function finishAssistantMessage(conversationId: string) {
     if (streamingText.value) {
-      messages.value.push({ role: 'assistant', content: streamingText.value })
+      messages.value.push({ role: 'assistant', content: streamingText.value, sources: streamingSources.value })
     }
     streamingText.value = ''
+    streamingSources.value = []
     isStreaming.value = false
     if (conversationId && conversationId !== currentConversationId.value) {
       currentConversationId.value = conversationId
       loadHistory().catch(() => {})
     }
-  }
-
-  function failAssistantMessage(err: Error) {
-    messages.value.push({
-      role: 'assistant',
-      content: `⚠️ 出错了：${err.message}。请稍后再试。`,
-    })
-    isStreaming.value = false
-    streamingText.value = ''
   }
 
   async function deleteConversation(conversationId: string) {
@@ -76,21 +67,42 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function sendMessage(query: string, attachmentIds: number[] = []) {
-    if (isStreaming.value) return
-    appendUserMessage(query)
+  async function sendMessage(
+    query: string,
+    attachmentIds: number[] = [],
+    uploadedFiles: UploadRecord[] = [],
+    onAccepted: () => void = () => {}
+  ) {
+    if (isStreaming.value || !query.trim()) return
+    const attachments: Attachment[] = uploadedFiles.map(file => ({
+      id: file.id,
+      fileName: file.fileName,
+      fileType: file.fileType,
+      fileSize: file.fileSize,
+      status: file.status,
+    }))
+    const userMessage: Message = { role: 'user', content: query, attachments }
+    const userMessageIndex = messages.value.length
+    messages.value.push(userMessage)
     startAssistantMessage()
 
     return new Promise<void>((resolve, reject) => {
       chatApi.sendMessageStream(
         { query, conversationId: currentConversationId.value, attachmentIds },
+        onAccepted,
         appendStreamChunk,
+        (sources) => { streamingSources.value = sources },
         (conversationId) => {
           finishAssistantMessage(conversationId)
           resolve()
         },
         (err) => {
-          failAssistantMessage(err)
+          isStreaming.value = false
+          streamingText.value = ''
+          streamingSources.value = []
+          if (messages.value[userMessageIndex] === userMessage) {
+            messages.value.splice(userMessageIndex, 1)
+          }
           reject(err)
         }
       )

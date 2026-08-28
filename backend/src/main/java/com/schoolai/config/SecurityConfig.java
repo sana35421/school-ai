@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/auth/login", "/api/health").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/yiban/login", "/api/health").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("COUNSELOR", "ADMIN", "SUPER_ADMIN")
                         .anyRequest().authenticated()
                 )

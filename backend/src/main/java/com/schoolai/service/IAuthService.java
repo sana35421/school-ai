@@ -9,5 +9,7 @@ public interface IAuthService {
 
     LoginVO login(LoginDTO loginDTO);
 
+    LoginVO loginWithYibanTestUser();
+
     UserVO getCurrentUser(HttpServletRequest request);
 }

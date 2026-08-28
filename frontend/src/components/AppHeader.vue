@@ -17,15 +17,14 @@ withDefaults(defineProps<Props>(), {
 
 async function handleLogout() {
   try {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '退出',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm('确定要退出登录吗？', '退出工作台', {
+      confirmButtonText: '退出登录',
+      cancelButtonText: '暂不退出',
       type: 'info',
     })
     userStore.logout()
     router.push('/login')
   } catch {
-    // 用户取消
   }
 }
 
@@ -45,47 +44,45 @@ const roleLabel = (role?: string) => {
 </script>
 
 <template>
-  <header class="h-14 px-6 flex items-center justify-between bg-cream/80 backdrop-blur border-b border-border sticky top-0 z-10">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded bg-ink flex items-center justify-center">
-        <span class="display-text text-terracotta font-semibold text-lg italic">问</span>
-      </div>
-      <div>
-        <h1 class="display-text text-base font-semibold text-ink leading-none">校园智能问答助手</h1>
-        <p class="text-2xs text-ink-mute font-mono mt-0.5 leading-none">Campus AI · powered by Dify + DeepSeek</p>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button
-        v-if="showAdminLink"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-ink-soft hover:bg-paper transition-colors"
-        @click="goToAdmin"
-      >
-        <Setting :size="15" />
-        <span>管理后台</span>
-      </button>
-      <div class="flex items-center gap-2.5 pl-3 ml-1 border-l border-border">
-        <div class="text-right hidden sm:block">
-          <p class="text-sm text-ink leading-none">{{ userStore.user?.realName || userStore.user?.username }}</p>
-          <p class="text-2xs text-ink-mute font-mono mt-0.5 leading-none">
-            {{ roleLabel(userStore.user?.role) }} · {{ userStore.user?.studentId }}
-          </p>
+  <header class="relative z-20 min-h-16 border-b border-[#dce4ee] bg-white/90 backdrop-blur-xl">
+    <div class="page-wrap flex min-h-16 items-center justify-between gap-3">
+      <RouterLink to="/chat" class="flex min-w-0 items-center gap-3 text-inherit no-underline">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#176b5b] text-lg font-bold text-white shadow-[0_8px_20px_rgba(23,107,91,0.24)]">知</div>
+        <div class="min-w-0">
+          <h1 class="display-text truncate text-lg font-semibold text-[#172033]">校园知识工作台</h1>
+          <p class="hidden truncate pt-0.5 text-[11px] font-medium tracking-[0.12em] text-[#7b899d] sm:block">CAMPUS KNOWLEDGE WORKSPACE</p>
         </div>
+      </RouterLink>
+
+      <div class="flex shrink-0 items-center gap-1.5 sm:gap-3">
         <button
-          class="w-9 h-9 rounded-full bg-sage-100 text-sage-700 flex items-center justify-center font-semibold text-sm hover:bg-sage-200 transition-colors"
-          @click="handleLogout"
-          title="退出登录"
+          v-if="showAdminLink"
+          class="btn-ghost !min-h-9 !px-3"
+          @click="goToAdmin"
         >
-          {{ (userStore.user?.realName || userStore.user?.username || '?').slice(0, 1) }}
+          <Setting :size="16" />
+          <span class="hidden sm:inline">管理中心</span>
         </button>
-        <button
-          class="p-2 rounded-md text-ink-mute hover:text-ink hover:bg-paper transition-colors"
-          @click="handleLogout"
-          title="退出登录"
-        >
-          <SwitchButton :size="16" />
-        </button>
+        <div class="flex items-center gap-2 border-l border-[#e1e8f0] pl-2 sm:pl-3">
+          <div class="hidden text-right md:block">
+            <p class="text-sm font-semibold leading-none text-[#26354a]">{{ userStore.user?.realName || userStore.user?.username }}</p>
+            <p class="mt-1 text-[11px] text-[#758398]">{{ roleLabel(userStore.user?.role) }} · {{ userStore.user?.studentId }}</p>
+          </div>
+          <button
+            class="grid h-9 w-9 place-items-center rounded-full bg-[#e2f1ee] text-sm font-bold text-[#116052] transition-colors hover:bg-[#cde7e1]"
+            @click="handleLogout"
+            title="退出登录"
+          >
+            {{ (userStore.user?.realName || userStore.user?.username || '?').slice(0, 1) }}
+          </button>
+          <button
+            class="grid h-9 w-9 place-items-center rounded-xl text-[#6e7d92] transition-colors hover:bg-[#f1f5f9] hover:text-[#26354a]"
+            @click="handleLogout"
+            title="退出登录"
+          >
+            <SwitchButton :size="17" />
+          </button>
+        </div>
       </div>
     </div>
   </header>

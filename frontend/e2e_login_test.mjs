@@ -20,7 +20,9 @@ if (!browserPath) {
   console.error('No Chrome/Edge found')
   process.exit(1)
 }
+const baseUrl = process.env.BASE_URL || 'http://localhost'
 console.log('Using browser:', browserPath)
+console.log('Using base URL:', baseUrl)
 
 const browser = await puppeteer.launch({
   executablePath: browserPath,
@@ -48,7 +50,7 @@ try {
   })
 
   console.log('=== 1. Open login page ===')
-  await page.goto('http://localhost:5173/login', { waitUntil: 'networkidle0', timeout: 15000 })
+  await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle0', timeout: 15000 })
 
   console.log('=== 2. Type credentials ===')
   await page.type('input[autocomplete="username"]', '20220101')
