@@ -6,6 +6,7 @@ import com.schoolai.config.DifyConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.schoolai.model.vo.DifyUploadedFileVO;
+import com.schoolai.model.vo.DifyChatResult;
 import okhttp3.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,8 @@ public class DifyClient {
     private final DifyConfig difyConfig;
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            // Allow long knowledge-grounded responses to finish before the client aborts.
+            .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
             .writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
             .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -146,7 +148,10 @@ public class DifyClient {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(rb.byteStream()))) {
                 String line;
                 boolean completed = false;
-                StringBuilder answerBuffer = new StringBuilder();
+                StringBuilder fallbackAnswerBuffer = new StringBuilder();
+                String llmNodeAnswer = "";
+                String workflowAnswer = "";
+                String messageEndAnswer = "";
                 while ((line = reader.readLine()) != null) {
                     if (!line.startsWith("data:")) continue;
                     String payload = line.substring(5).trim();
@@ -154,15 +159,12 @@ public class DifyClient {
                     try {
                         JsonNode node = objectMapper.readTree(payload);
                         String event = node.path("event").asText();
-                        if ("message".equals(event) || "agent_message".equals(event)) {
-                            String ans = node.path("answer").asText();
+                        if ("message".equals(event) || "agent_message".equals(event) || "text_chunk".equals(event)) {
+                            // A reasoning model may split <think> and </think> across separate SSE chunks.
+                            // Keep the raw stream intact and remove the complete reasoning block only at the end.
+                            String ans = extractRawAnswer(node);
                             if (!ans.isEmpty()) {
-                                answerBuffer.append(ans);
-                                String visible = removeThinking(answerBuffer);
-                                if (!visible.isEmpty()) {
-                                    onChunk.accept(visible);
-                                    answerBuffer.setLength(0);
-                                }
+                                fallbackAnswerBuffer.append(ans);
                             }
                         } else if ("node_finished".equals(event)
                                 && "knowledge-retrieval".equals(node.path("data").path("node_type").asText())) {
@@ -179,7 +181,21 @@ public class DifyClient {
                                 }
                                 onSources.accept(objectMapper.writeValueAsString(sources));
                             }
+                        } else if ("node_finished".equals(event)
+                                && "llm".equals(node.path("data").path("node_type").asText())) {
+                            String answer = removeThinking(extractRawAnswer(node));
+                            if (!answer.isBlank()) {
+                                llmNodeAnswer = answer;
+                            }
+                        } else if ("workflow_finished".equals(event)) {
+                            String answer = removeThinking(extractRawAnswer(node));
+                            if (!answer.isBlank()) {
+                                workflowAnswer = answer;
+                            }
                         } else if ("message_end".equals(event) || "agent_end".equals(event)) {
+                            // workflow_finished can arrive after message_end. Keep this value and select
+                            // the final visible answer only after every event has been read.
+                            messageEndAnswer = extractRawAnswer(node);
                             completed = true;
                             String cid = node.path("conversation_id").asText();
                             if (!cid.isEmpty()) {
@@ -197,8 +213,24 @@ public class DifyClient {
                 if (!completed) {
                     throw new IOException("Dify 流式响应未正常结束");
                 }
+                String answer = selectFinalAnswer(messageEndAnswer, fallbackAnswerBuffer.toString(),
+                        workflowAnswer, llmNodeAnswer);
+                if (!answer.isBlank()) {
+                    onChunk.accept(answer);
+                }
             }
         }
+    }
+
+    /** Collects a completed workflow result before it is emitted to the browser. */
+    public DifyChatResult chatCollect(String query, String userId, String conversationId,
+                                       List<Map<String, String>> files) throws IOException {
+        StringBuffer conversationIdOut = new StringBuffer();
+        StringBuilder answer = new StringBuilder();
+        String[] sources = {null};
+        chatStream(query, userId, conversationId, files, conversationIdOut,
+                value -> sources[0] = value, answer::append);
+        return new DifyChatResult(conversationIdOut.toString(), answer.toString(), sources[0]);
     }
 
     private boolean containsIgnoreCase(JsonNode values, String expected) {
@@ -215,16 +247,49 @@ public class DifyClient {
         return base.endsWith("/") ? base.substring(0, base.length() - 1) + path : base + path;
     }
 
-    private String removeThinking(StringBuilder buffer) {
-        String value = buffer.toString();
+    String removeThinking(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
         int start = value.indexOf("<think>");
         if (start < 0) {
             return value;
         }
         int end = value.indexOf("</think>", start + 7);
         if (end < 0) {
-            return "";
+            // An interrupted stream can end inside a reasoning block. Preserve any
+            // visible text emitted before it instead of turning the answer into blank.
+            return value.substring(0, start);
         }
         return value.substring(0, start) + value.substring(end + 8);
+    }
+
+    String selectFinalAnswer(String messageEndAnswer, String streamedAnswer,
+                             String workflowAnswer, String llmNodeAnswer) {
+        for (String candidate : List.of(messageEndAnswer, streamedAnswer, workflowAnswer, llmNodeAnswer)) {
+            String visible = removeThinking(candidate);
+            if (!visible.isBlank()) {
+                return visible;
+            }
+        }
+        return "";
+    }
+
+    private String extractRawAnswer(JsonNode node) {
+        String directAnswer = node.path("answer").asText();
+        if (!directAnswer.isBlank()) {
+            return directAnswer;
+        }
+        JsonNode outputs = node.path("data").path("outputs");
+        for (String key : List.of("text", "answer", "output", "result", "content")) {
+            JsonNode value = outputs.path(key);
+            if (value.isTextual()) {
+                String answer = value.asText();
+                if (!answer.isBlank()) {
+                    return answer;
+                }
+            }
+        }
+        return "";
     }
 }

@@ -11,6 +11,8 @@
 - **班级管理**：导员或管理员查看授权范围内的学生与对话。
 - **知识库管理**：管理员通过 Dify 管理知识库和应用文档。
 - **中文支持**：MySQL、Spring Boot、Nginx 全链路使用 UTF-8/utf8mb4。
+- **竞赛检索增强**：支持赛事简称/别名归一化，并按赛事严格隔离简介、指导老师和队友资料；易班数字校园联合查询可同时返回两类人员。
+- **可靠性保障**：Dify 空回答自动重试并提供可见兜底；知识库未命中且启用配置时，可通过博查搜索返回至少 3 条公开网页结果。
 
 ## 2. 技术架构
 
@@ -79,6 +81,21 @@ JWT_SECRET=请设置至少32位随机字符串
 ```
 
 如果使用独立部署的 Dify，将 `DIFY_API_BASE` 改为实际 API 地址。不要在 `.env.example` 或 Git 中填写真实密钥。
+
+### 4.1.1 可选：知识库无匹配时联网检索
+
+系统默认只使用知识库。配置博查搜索 API 后，只有 Dify 明确返回“知识库暂无具体信息”且没有检索来源时，后端才会查询网络；正常知识库问答保持原有流式输出。
+
+```env
+WEB_SEARCH_ENABLED=true
+BOCHA_API_KEY=请填写你的博查搜索 API Key
+WEB_SEARCH_MAX_RESULTS=5
+WEB_SEARCH_TIMEOUT_SECONDS=12
+# 生产环境建议仅允许官方来源，多个域名用逗号分隔
+WEB_SEARCH_ALLOWED_DOMAINS=edu.cn,moe.gov.cn,gov.cn,ccpc.io
+```
+
+网络回答会标注“网络检索结果”，并展示可点击的来源链接。未配置密钥、搜索超时或无可信结果时，系统保留知识库的无匹配提示，不会生成网络内容。
 
 ### 4.2 启动服务
 
@@ -202,6 +219,25 @@ school-ai/
 ├── competitions_kb.txt              # 比赛知识库资料
 ├── scholarship_and_grad_school_kb.md # 奖学金、考研与保研知识库资料
 └── docs/                            # 部署和上线文档
+```
+
+## 9. 版本验证记录
+
+本版本已完成以下验证：
+
+- `mvn -q -DskipTests=false test`：后端单元测试通过。
+- `mvn -q -Dtest=ChatServiceImplAttachmentTest test`：赛事别名、意图分流、空回答重试相关测试通过。
+- 线上 `http://8.137.157.182`：易班比赛简介、指导老师、队友及老师与队友联合查询均可返回；后端 `/api/health` 返回 `200`。
+
+发布新版本时，建议先在本地运行测试，再执行：
+
+```bash
+git push origin <当前分支>
+cd /opt/school-ai
+git pull --ff-only origin <当前分支>
+docker compose -p school-ai up -d --build backend frontend
+docker compose -p school-ai ps
+curl http://localhost:8080/api/health
 ```
 
 ## 9. 上线前检查

@@ -21,6 +21,8 @@ export interface SourceItem {
   documentName: string
   score: number
   content: string
+  url?: string
+  sourceType?: 'web' | 'knowledge'
 }
 
 export interface Message {
@@ -35,6 +37,7 @@ export interface Message {
 interface ChatSendPayload {
   query: string
   conversationId?: string
+  competitionSelectionContext?: string
   attachmentIds?: number[]
 }
 
@@ -42,6 +45,11 @@ export interface ChatSendResult {
   answer: string
   conversationId: string
   sources?: SourceItem[]
+}
+
+export interface ChatProgress {
+  stage: 'knowledge' | 'web' | 'answer'
+  message: string
 }
 
 export const getHistory = (days = 7) =>
@@ -58,6 +66,8 @@ export const sendMessageStream = (
   onAccepted: () => void,
   onChunk: (text: string) => void,
   onSources: (sources: SourceItem[]) => void,
+  onProgress: (progress: ChatProgress) => void,
+  onCompetitionSelection: (originQuery: string) => void,
   onDone: (conversationId: string) => void,
   onError: (err: Error) => void
 ) => {
@@ -84,6 +94,31 @@ export const sendMessageStream = (
       let buffer = ''
       let conversationId = ''
 
+      const handleLine = (line: string) => {
+        if (!line.startsWith('data:')) return
+        const eventPayload = line.slice(5).trim()
+        if (!eventPayload) return
+        let evt: any
+        try {
+          evt = JSON.parse(eventPayload)
+        } catch {
+          return
+        }
+        if (evt.type === 'message' && evt.answer) {
+          onChunk(evt.answer)
+        } else if (evt.type === 'sources' && Array.isArray(evt.sources)) {
+          onSources(evt.sources)
+        } else if (evt.type === 'progress' && evt.message) {
+          onProgress({ stage: evt.stage || 'answer', message: evt.message })
+        } else if (evt.type === 'selection' && evt.origin_query) {
+          onCompetitionSelection(evt.origin_query)
+        } else if (evt.type === 'done') {
+          conversationId = evt.conversation_id || conversationId
+        } else if (evt.type === 'error') {
+          throw new Error(evt.message || '流式错误')
+        }
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -91,27 +126,10 @@ export const sendMessageStream = (
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
 
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue
-          const eventPayload = line.slice(5).trim()
-          if (!eventPayload) continue
-          let evt: any
-          try {
-            evt = JSON.parse(eventPayload)
-          } catch {
-            continue
-          }
-          if (evt.type === 'message' && evt.answer) {
-            onChunk(evt.answer)
-          } else if (evt.type === 'sources' && Array.isArray(evt.sources)) {
-            onSources(evt.sources)
-          } else if (evt.type === 'done') {
-            conversationId = evt.conversation_id || conversationId
-          } else if (evt.type === 'error') {
-            throw new Error(evt.message || '流式错误')
-          }
-        }
+        lines.forEach(handleLine)
       }
+      buffer += decoder.decode()
+      if (buffer) handleLine(buffer)
       onDone(conversationId)
     })
     .catch((err) => onError(err))

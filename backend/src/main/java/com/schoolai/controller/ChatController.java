@@ -29,9 +29,9 @@ public class ChatController extends BaseController {
     }
 
     @GetMapping("/history")
-    public Result<List<ConversationVO>> history(@RequestParam(defaultValue = "7") int days,
+    public Result<List<ConversationVO>> history(@RequestParam(defaultValue = "30") int days,
                                                  HttpServletRequest request) {
-        List<ConversationVO> list = chatService.getHistory(days, request);
+        List<ConversationVO> list = chatService.getHistory(Math.min(Math.max(days, 1), 365), request);
         return success(list);
     }
 

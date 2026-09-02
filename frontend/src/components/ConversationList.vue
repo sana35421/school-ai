@@ -81,7 +81,7 @@ function handleDelete(e: Event, conversationId: string) {
     </div>
 
     <div class="border-t border-[#dce5ef] bg-white/55 p-4">
-      <div class="rounded-xl bg-[#eef4f8] px-3 py-2.5 text-xs leading-relaxed text-[#718096]">对话记录保留 7 天，支持在提问时附加学习材料。</div>
+      <div class="rounded-xl bg-[#eef4f8] px-3 py-2.5 text-xs leading-relaxed text-[#718096]">显示近 30 天对话，支持在提问时附加学习材料。</div>
     </div>
   </aside>
 </template>

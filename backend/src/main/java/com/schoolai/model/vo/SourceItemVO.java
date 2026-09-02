@@ -7,4 +7,6 @@ public class SourceItemVO {
     private String documentName;
     private double score;
     private String content;
+    private String url;
+    private String sourceType;
 }

@@ -12,6 +12,8 @@ public class ChatSendDTO {
     @Size(max = 4000, message = "消息内容不能超过4000个字符")
     private String query;
     private String conversationId;
+    @Size(max = 4000, message = "赛事选择上下文不能超过4000个字符")
+    private String competitionSelectionContext;
     @Size(max = 3, message = "单条消息最多上传3个文件")
     private List<Long> attachmentIds;
 }

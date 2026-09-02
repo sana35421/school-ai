@@ -43,6 +43,13 @@ dify:
 chat:
   file-upload-enabled: ${CHAT_FILE_UPLOAD_ENABLED:true}
 
+web-search:
+  enabled: ${WEB_SEARCH_ENABLED:false}
+  bocha-api-key: ${BOCHA_API_KEY:}
+  max-results: ${WEB_SEARCH_MAX_RESULTS:3}
+  timeout-seconds: ${WEB_SEARCH_TIMEOUT_SECONDS:12}
+  allowed-domains: ${WEB_SEARCH_ALLOWED_DOMAINS:}
+
 jwt:
   secret: ${JWT_SECRET}
   expire: 604800000  # 7 天

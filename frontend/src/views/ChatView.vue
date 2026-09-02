@@ -22,7 +22,7 @@ const currentConvId = computed(() => (route.params.conversationId as string) || 
 async function loadAll() {
   loading.value = true
   try {
-    await chatStore.loadHistory(7)
+    await chatStore.loadHistory()
     if (currentConvId.value) await chatStore.loadMessages(currentConvId.value)
   } catch { ElMessage.error('加载历史对话失败') } finally { loading.value = false }
 }
@@ -53,6 +53,9 @@ function handleSend(
 ) {
   chatStore.sendMessage(text, attachmentIds, attachments, accepted)
     .then(async () => {
+      if (chatStore.currentConversationId && !route.params.conversationId) {
+        await router.replace(`/chat/${chatStore.currentConversationId}`)
+      }
       complete(true)
       await nextTick()
       scrollToBottom()
@@ -77,7 +80,7 @@ onMounted(async () => { await userStore.fetchProfile(); await loadAll() })
         <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
           <div class="mx-auto max-w-4xl">
             <template v-if="chatStore.messages.length === 0"><div class="py-4 sm:py-10"><EmptyState @pick="(t) => handleSend(t, [], [], () => {}, () => {})" /></div></template>
-            <div v-else class="space-y-7 pb-6 sm:space-y-8"><ChatMessage v-for="(msg, idx) in chatStore.messages" :key="idx" :role="msg.role" :content="msg.content" :sources="msg.sources" :attachments="msg.attachments" /><ChatMessage v-if="chatStore.isStreaming" role="assistant" :content="chatStore.streamingText" streaming /></div>
+            <div v-else class="space-y-7 pb-6 sm:space-y-8"><ChatMessage v-for="(msg, idx) in chatStore.messages" :key="idx" :role="msg.role" :content="msg.content" :sources="msg.sources" :attachments="msg.attachments" /><ChatMessage v-if="chatStore.isStreaming" role="assistant" :content="chatStore.streamingText" :status="chatStore.streamingStatus" streaming /></div>
           </div>
         </div>
         <div class="border-t border-[#dce4ee] bg-white/90 px-4 py-4 backdrop-blur sm:px-8 sm:py-5"><div class="mx-auto max-w-4xl"><ChatInput :disabled="chatStore.isStreaming" @send="handleSend" /><p class="mt-2.5 text-center text-[11px] text-[#8592a4]">AI 内容仅供学习参考，重要政策请以学校官方文件为准</p></div></div>
