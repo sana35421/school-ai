@@ -2,6 +2,7 @@ package com.schoolai.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolai.common.exception.ServiceException;
 import com.schoolai.entity.Conversation;
@@ -118,7 +119,7 @@ public class ChatServiceImpl implements IChatService {
             String answer = normalizeAssistantAnswer(
                     ensureVisibleAnswer(difyResult.getAnswer(), difyResult.getConversationId()));
             String sourcesJson = difyResult.getSourcesJson();
-            if (shouldUseWebFallback(answer)) {
+            if (shouldUseWebFallback(answer, sourcesJson)) {
                 writeProgress(writer, "web", "知识库未命中，正在检索网络信息");
                 String webQuery = buildWebSearchQuery(dto.getQuery(), normalizedQuery, difyConvId);
                 log.info("Web fallback query: {}", webQuery);
@@ -666,7 +667,15 @@ public class ChatServiceImpl implements IChatService {
     }
 
     boolean shouldUseWebFallback(String answer) {
+        return shouldUseWebFallback(answer, null);
+    }
+
+    /** Keep partial knowledge-base answers grounded instead of replacing them with web results. */
+    boolean shouldUseWebFallback(String answer, String sourcesJson) {
         if (!webSearchService.isAvailable()) {
+            return false;
+        }
+        if (hasKnowledgeSources(sourcesJson)) {
             return false;
         }
         String normalized = answer == null ? "" : answer.replaceAll("\\s+", "");
@@ -676,6 +685,23 @@ public class ChatServiceImpl implements IChatService {
                 || normalized.contains("暂无具体队友信息")
                 || normalized.contains("没有完整具体队友记录")
                 || normalized.contains("没有相关资料");
+    }
+
+    private boolean hasKnowledgeSources(String sourcesJson) {
+        if (sourcesJson == null || sourcesJson.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(sourcesJson);
+            if (node.isArray()) {
+                return !node.isEmpty();
+            }
+            JsonNode sources = node.path("sources");
+            return sources.isArray() ? !sources.isEmpty() : !sources.isMissingNode();
+        } catch (Exception ex) {
+            log.debug("Unable to parse Dify sources payload; skip web fallback", ex);
+            return true;
+        }
     }
 
     String buildWebSearchQuery(String originalQuery, String normalizedQuery, String conversationId) {

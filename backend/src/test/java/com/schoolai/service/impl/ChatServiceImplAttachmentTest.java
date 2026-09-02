@@ -305,4 +305,15 @@ class ChatServiceImplAttachmentTest {
         assertEquals("已检索到相关资料，但本次回答生成异常，请重新发送问题。", answer);
     }
 
+    @Test
+    void shouldNotUseWebFallbackWhenKnowledgeBaseReturnedPartialSources() {
+        when(webSearchService.isAvailable()).thenReturn(true);
+
+        assertFalse(chatService.shouldUseWebFallback(
+                "知识库中暂时没有该赛事的赛制和参赛要求具体信息。",
+                "[{\"documentName\":\"中国国际大学生创新大赛.md\",\"score\":0.91}]"));
+        assertFalse(chatService.shouldUseWebFallback(
+                "知识库中暂时没有该赛事的赛制和参赛要求具体信息。", "[]"));
+    }
+
 }
